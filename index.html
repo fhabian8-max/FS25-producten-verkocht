@@ -3,38 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FS25 - Challenge Tracker & Savegame Manager</title>
+    <title>FS25 - Challenge Tracker & Cloud Save Manager</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome Iconen -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Firebase SDKs (Compat-versie voor browser-integratie) -->
+    <!-- Firebase SDKs (Compat) -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <style>
-        body { background-color: #12181b; color: #e2e8f0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #0f172a; color: #e2e8f0; font-family: system-ui, -apple-system, sans-serif; }
         .fs-card { background-color: #1e293b; border-left: 4px solid #16a34a; }
         .fs-btn { background-color: #16a34a; transition: all 0.2s; }
         .fs-btn:hover { background-color: #15803d; }
+        .active-tab { border-bottom: 2px solid #16a34a; color: #16a34a; font-weight: bold; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
 
     <!-- Navigatie & Auth Bar -->
-    <nav class="bg-slate-900 border-b border-slate-800 p-4 sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto flex justify-between items-center">
+    <nav class="bg-slate-900 border-b border-slate-800 p-4 sticky top-0 z-50 shadow-md">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
             <div class="flex items-center space-x-3 cursor-pointer" onclick="showHomeScreen()">
-                <i class="fa-solid fa-map-location-dot text-2xl text-green-500"></i>
-                <h1 class="text-xl font-bold tracking-wide text-white">FS25 <span class="text-green-500">Tracker</span></h1>
+                <i class="fa-solid fa-tractor text-2xl text-green-500"></i>
+                <h1 class="text-xl font-bold tracking-wide text-white">FS25 <span class="text-green-500">Tracker Cloud</span></h1>
             </div>
-            <div id="auth-section">
-                <button id="btn-login" onclick="loginWithGoogle()" class="fs-btn text-white px-4 py-2 rounded flex items-center gap-2 font-medium text-sm">
+
+            <!-- Login / Profiel status -->
+            <div id="auth-section" class="flex items-center gap-3">
+                <button id="btn-login" onclick="loginWithGoogle()" class="fs-btn text-white px-4 py-2 rounded-lg flex items-center gap-2 font-medium text-sm shadow-md">
                     <i class="fa-brands fa-google"></i> Inloggen met Google
                 </button>
-                <div id="user-info" class="hidden flex items-center gap-4">
-                    <span id="user-name" class="text-sm font-semibold text-slate-300"></span>
-                    <button onclick="logout()" class="bg-slate-700 hover:bg-slate-600 text-xs text-white px-3 py-1.5 rounded">Uitloggen</button>
+                <div id="user-info" class="hidden flex items-center gap-3 bg-slate-800 p-1.5 px-3 rounded-lg border border-slate-700">
+                    <img id="user-avatar" src="" alt="Avatar" class="w-7 h-7 rounded-full border border-green-500">
+                    <span id="user-name" class="text-xs font-semibold text-slate-200"></span>
+                    <button onclick="logout()" class="bg-slate-700 hover:bg-slate-600 text-xs text-slate-300 px-2.5 py-1 rounded border border-slate-600 transition">Uitloggen</button>
                 </div>
             </div>
         </div>
@@ -45,14 +49,20 @@
         
         <!-- SCHERM 1: Homescreen / Map Selectie -->
         <section id="screen-home" class="space-y-6">
-            <div class="flex justify-between items-center border-b border-slate-800 pb-4">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-800 pb-4">
                 <div>
-                    <h2 class="text-2xl font-bold text-white">Mijn Savegame Mappen</h2>
-                    <p class="text-slate-400 text-sm">Kies een map of maak een nieuwe challenge aan.</p>
+                    <h2 class="text-2xl font-bold text-white">Mijn Cloud Savegames</h2>
+                    <p class="text-slate-400 text-sm">Selecteer een boerderij of start een nieuwe uitdaging.</p>
                 </div>
-                <button onclick="openNewMapModal()" class="fs-btn text-white px-4 py-2 rounded flex items-center gap-2 font-medium">
-                    <i class="fa-solid fa-plus"></i> Nieuwe Map
+                <button onclick="openNewMapModal()" class="fs-btn text-white px-4 py-2 rounded-lg flex items-center gap-2 font-medium shadow-md">
+                    <i class="fa-solid fa-plus"></i> Nieuwe Savegame / Map
                 </button>
+            </div>
+
+            <!-- Cloud Sync Status Melding -->
+            <div id="login-warning" class="bg-amber-900/30 border border-amber-600/40 text-amber-200 p-4 rounded-lg flex items-center gap-3 text-sm">
+                <i class="fa-solid fa-cloud-slash text-xl text-amber-400"></i>
+                <span>Je bent momenteel **niet ingelogd**. Wijzigingen worden alleen lokaal in deze browser opgeslagen. Log in met Google om je data automatisch in de cloud te bewaren!</span>
             </div>
 
             <!-- Mappen Grid -->
@@ -65,7 +75,7 @@
         <section id="screen-dashboard" class="hidden space-y-6">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-800 pb-4">
                 <div class="flex items-center gap-3">
-                    <button onclick="showHomeScreen()" class="bg-slate-800 hover:bg-slate-700 text-white p-2.5 rounded-lg">
+                    <button onclick="showHomeScreen()" class="bg-slate-800 hover:bg-slate-700 text-white p-2.5 rounded-lg border border-slate-700 transition">
                         <i class="fa-solid fa-arrow-left"></i>
                     </button>
                     <div>
@@ -73,35 +83,68 @@
                             <i class="fa-solid fa-map text-green-500"></i>
                             <h2 id="active-map-name" class="text-2xl font-bold text-white">Map Naam</h2>
                         </div>
-                        <p class="text-slate-400 text-sm">Beheer hier je gekozen doelen en verkopen voor deze challenge</p>
-                    </div>
-                </div>
-                <button onclick="syncWithCloud()" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg flex items-center gap-2 font-semibold">
-                    <i class="fa-solid fa-floppy-disk"></i> Opslaan & Syncen
-                </button>
-            </div>
-
-            <!-- Bomen Teller Card -->
-            <div id="tree-card" class="fs-card p-5 rounded-lg shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div class="flex items-center gap-4">
-                    <div class="p-3 bg-green-950 rounded-full text-green-400 text-2xl">
-                        <i class="fa-solid fa-tree"></i>
-                    </div>
-                    <div>
-                        <h3 class="text-lg font-bold text-white">Geplante Bomen Challenge</h3>
-                        <p class="text-slate-400 text-xs">Houd het aantal geplante bomen op deze map bij</p>
+                        <p class="text-slate-400 text-sm">Houd je doelen, verkopen en voorraad bij.</p>
                     </div>
                 </div>
                 <div class="flex items-center gap-3">
-                    <button onclick="updateTrees(-10)" class="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1 rounded font-bold">-10</button>
-                    <button onclick="updateTrees(-1)" class="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1 rounded font-bold">-1</button>
-                    <input type="number" id="tree-count" value="0" min="0" onchange="updateTrees(0)" class="w-24 bg-slate-900 border border-slate-700 rounded text-center py-1 font-bold text-green-400 text-lg">
-                    <button onclick="updateTrees(1)" class="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1 rounded font-bold">+1</button>
-                    <button onclick="updateTrees(10)" class="bg-slate-700 hover:bg-slate-600 text-white px-3 py-1 rounded font-bold">+10</button>
+                    <span id="save-status" class="text-xs text-green-400 font-semibold px-2.5 py-1 bg-green-950/60 rounded-md border border-green-800 hidden flex items-center gap-1.5">
+                        <i class="fa-solid fa-cloud-arrow-up"></i> Automatisch opgeslagen
+                    </span>
                 </div>
             </div>
 
-            <!-- Producten en Gewassen Grid -->
+            <!-- Dashboard Stats & Zoekbalk -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <!-- Stat 1: Totaal Verkocht -->
+                <div class="bg-slate-800/60 p-4 rounded-lg border border-slate-700/50 flex items-center gap-4">
+                    <div class="p-3 bg-blue-950/80 rounded-lg text-blue-400 text-xl">
+                        <i class="fa-solid fa-chart-line"></i>
+                    </div>
+                    <div>
+                        <div class="text-xs text-slate-400 uppercase font-semibold">Totaal Verkocht</div>
+                        <div id="stat-total-sold" class="text-xl font-bold text-white">0 L</div>
+                    </div>
+                </div>
+
+                <!-- Stat 2: Bomen Teller -->
+                <div id="tree-card" class="bg-slate-800/60 p-4 rounded-lg border border-slate-700/50 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="p-3 bg-green-950/80 rounded-lg text-green-400 text-xl">
+                            <i class="fa-solid fa-tree"></i>
+                        </div>
+                        <div>
+                            <div class="text-xs text-slate-400 uppercase font-semibold">Geplante Bomen</div>
+                            <div class="text-xs text-slate-500">Aantal bomen op kaart</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <button onclick="updateTrees(-1)" class="bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded font-bold text-xs">-1</button>
+                        <input type="number" id="tree-count" value="0" min="0" oninput="updateTrees(0)" class="w-16 bg-slate-900 border border-slate-700 rounded text-center py-1 font-bold text-green-400 text-sm">
+                        <button onclick="updateTrees(1)" class="bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded font-bold text-xs">+1</button>
+                    </div>
+                </div>
+
+                <!-- Zoekbalk -->
+                <div class="bg-slate-800/60 p-4 rounded-lg border border-slate-700/50 flex items-center">
+                    <div class="relative w-full">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-500"></i>
+                        <input type="text" id="search-product" onkeyup="filterProducts()" placeholder="Zoek gewas of product..." class="w-full bg-slate-900 border border-slate-700 rounded pl-9 pr-3 py-1.5 text-sm text-white focus:outline-none focus:border-green-500">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Categorie Filters -->
+            <div class="flex flex-wrap gap-2 border-b border-slate-800 pb-3">
+                <button onclick="setCategoryFilter('all')" id="cat-all" class="cat-btn active-tab px-3 py-1.5 text-xs rounded-lg transition">Alles</button>
+                <button onclick="setCategoryFilter('Nieuw FS25')" id="cat-Nieuw FS25" class="cat-btn text-slate-400 hover:text-white px-3 py-1.5 text-xs rounded-lg transition">Nieuw FS25 Gewassen</button>
+                <button onclick="setCategoryFilter('Graan')" id="cat-Graan" class="cat-btn text-slate-400 hover:text-white px-3 py-1.5 text-xs rounded-lg transition">Granen</button>
+                <button onclick="setCategoryFilter('Wortel/Groente')" id="cat-Wortel/Groente" class="cat-btn text-slate-400 hover:text-white px-3 py-1.5 text-xs rounded-lg transition">Wortel & Groenten</button>
+                <button onclick="setCategoryFilter('Dierlijk')" id="cat-Dierlijk" class="cat-btn text-slate-400 hover:text-white px-3 py-1.5 text-xs rounded-lg transition">Dierlijk</button>
+                <button onclick="setCategoryFilter('Productie')" id="cat-Productie" class="cat-btn text-slate-400 hover:text-white px-3 py-1.5 text-xs rounded-lg transition">Producties</button>
+                <button onclick="setCategoryFilter('Mod/DLC')" id="cat-Mod/DLC" class="cat-btn text-slate-400 hover:text-white px-3 py-1.5 text-xs rounded-lg transition">Mods & Bouw</button>
+            </div>
+
+            <!-- Producten Grid -->
             <div id="products-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <!-- Dynamisch ingevuld -->
             </div>
@@ -112,28 +155,24 @@
     <!-- MODAL: Nieuwe Map & Challenge Selectie -->
     <div id="modal-map" class="fixed inset-0 bg-black/80 hidden flex items-center justify-center p-4 z-50 overflow-y-auto">
         <div class="bg-slate-800 rounded-lg max-w-2xl w-full p-6 space-y-5 border border-slate-700 max-h-[90vh] flex flex-col my-auto">
-            
             <div class="flex justify-between items-center border-b border-slate-700 pb-3">
                 <h3 class="text-xl font-bold text-white flex items-center gap-2">
-                    <i class="fa-solid fa-map-location-dot text-green-500"></i> Nieuwe Challenge Map Aanmaken
+                    <i class="fa-solid fa-map-location-dot text-green-500"></i> Nieuwe Savegame Aanmaken
                 </h3>
                 <button onclick="closeModal('modal-map')" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
             </div>
 
-            <!-- Map Naam -->
             <div>
-                <label class="block text-sm font-medium text-slate-300 mb-1">Naam van de Map / Challenge</label>
-                <input type="text" id="new-map-name" onkeydown="if(event.key==='Enter') createNewMap()" placeholder="bijv. Catuaí - Beans & Alpacas Challenge" class="w-full bg-slate-900 border border-slate-700 rounded p-2.5 text-white focus:outline-none focus:border-green-500">
+                <label class="block text-sm font-medium text-slate-300 mb-1">Naam van de Map / Boerderij</label>
+                <input type="text" id="new-map-name" onkeydown="if(event.key==='Enter') createNewMap()" placeholder="bijv. Zielonka - Rice & Vegetables Challenge" class="w-full bg-slate-900 border border-slate-700 rounded p-2.5 text-white focus:outline-none focus:border-green-500">
             </div>
 
-            <!-- Vinkjes overzicht voor Challenge Setup -->
             <div class="flex-grow overflow-y-auto space-y-4 pr-1">
                 <div class="flex justify-between items-center">
-                    <label class="block text-sm font-semibold text-green-400">Selecteer doelen voor deze challenge:</label>
+                    <label class="block text-sm font-semibold text-green-400">Selecteer bij te houden producten:</label>
                     <button type="button" onclick="toggleAllCheckboxes()" class="text-xs text-slate-400 hover:text-white underline">Alles Selecteren / Deselecteren</button>
                 </div>
 
-                <!-- Bomen optie -->
                 <div class="bg-slate-900 p-3 rounded-lg border border-slate-700 flex items-center justify-between">
                     <div class="flex items-center gap-2 text-white font-medium text-sm">
                         <i class="fa-solid fa-tree text-green-500"></i>
@@ -142,118 +181,114 @@
                     <input type="checkbox" id="chk-trees" checked class="w-4 h-4 accent-green-500 cursor-pointer">
                 </div>
 
-                <!-- Gewassen Selectie Grid -->
                 <div id="checkbox-container" class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <!-- Dynamisch gevuld -->
                 </div>
             </div>
 
-            <!-- Knoppen -->
             <div class="flex justify-end gap-3 pt-3 border-t border-slate-700">
                 <button onclick="closeModal('modal-map')" class="bg-slate-700 text-slate-300 px-4 py-2 rounded">Annuleren</button>
-                <button onclick="createNewMap()" class="fs-btn text-white px-5 py-2 rounded font-bold">Map & Challenge Aanmaken</button>
+                <button onclick="createNewMap()" class="fs-btn text-white px-5 py-2 rounded font-bold">Opslaan</button>
             </div>
         </div>
     </div>
 
     <!-- Application Logic -->
     <script>
-        // --- 1. FIREBASE CONFIGURATIE ---
+        // Firebase Configuraie
         const firebaseConfig = {
             apiKey: "AIzaSyBjoxW7PVYFaGSVkKu9qQH8vnQBXt1Iv6U",
             authDomain: "fs25-producten-verkocht.firebaseapp.com",
             projectId: "fs25-producten-verkocht",
             storageBucket: "fs25-producten-verkocht.firebasestorage.app",
             messagingSenderId: "654697903658",
-            appId: "1:654697903658:web:ae023cf4b8164f8b097553",
-            measurementId: "G-Q8B8KBFWNE"
+            appId: "1:654697903658:web:ae023cf4b8164f8b097553"
         };
 
-        let db = null;
-        let auth = null;
-        let currentUser = null;
+        let db = null, auth = null, currentUser = null;
 
         try {
             firebase.initializeApp(firebaseConfig);
             auth = firebase.auth();
             db = firebase.firestore();
-        } catch (e) {
-            console.warn("Firebase-initialisatiefout:", e);
-        }
+        } catch (e) { console.warn("Firebase-initialisatiefout:", e); }
 
-        // --- 2. FS25 DATABASE (INCLUSIEF BEANS & ALPACAS DLC) ---
+        // COMPLETE FS25 & MODS GEWASSEN EN PRODUCTEN LIJST
         const FS25_PRODUCTS = [
-            // DLC Producten
-            { id: 'coffee_beans', name: 'Koffiebonen', type: 'DLC Gewas', icon: 'fa-mug-hot' },
-            { id: 'alpaca_wool', name: 'Alpaca Wol', type: 'DLC Dierlijk', icon: 'fa-scissors' },
-            { id: 'resin', name: 'Hars (Resin)', type: 'DLC Product', icon: 'fa-bottle-droplet' },
-            { id: 'pigment', name: 'Pigment', type: 'DLC Product', icon: 'fa-palette' },
+            // NIEUWE FS25 GEWASSEN
+            { id: 'rice', name: 'Rijst (Rice)', type: 'Nieuw FS25', icon: 'fa-bowl-rice' },
+            { id: 'long_grain_rice', name: 'Langgraanrijst', type: 'Nieuw FS25', icon: 'fa-bowl-rice' },
+            { id: 'green_beans', name: 'Sperziebonen', type: 'Nieuw FS25', icon: 'fa-seedling' },
+            { id: 'peas', name: 'Erwten', type: 'Nieuw FS25', icon: 'fa-circle-dot' },
+            { id: 'spinach', name: 'Spinazie', type: 'Nieuw FS25', icon: 'fa-leaf' },
 
-            // Standaard Gewassen & Producten
-            { id: 'wheat', name: 'Tarwe', type: 'Gewas', icon: 'fa-wheat-awn' },
-            { id: 'barley', name: 'Gerst', type: 'Gewas', icon: 'fa-wheat-awn-circle-exclamation' },
-            { id: 'oat', name: 'Haver', type: 'Gewas', icon: 'fa-bowl-rice' },
-            { id: 'canola', name: 'Koolzaad', type: 'Gewas', icon: 'fa-seedling' },
-            { id: 'sunflower', name: 'Zonnebloemen', type: 'Gewas', icon: 'fa-sun' },
-            { id: 'soybean', name: 'Sojabonen', type: 'Gewas', icon: 'fa-disease' },
-            { id: 'maize', name: 'Mais', type: 'Gewas', icon: 'fa-plant-wilt' },
-            { id: 'sorghum', name: 'Sorghum', type: 'Gewas', icon: 'fa-wheat-awn' },
-            { id: 'potato', name: 'Aardappelen', type: 'Gewas', icon: 'fa-database' },
-            { id: 'sugarbeet', name: 'Suikerbieten', type: 'Gewas', icon: 'fa-cubes' },
-            { id: 'cotton', name: 'Katoen', type: 'Gewas', icon: 'fa-scroll' },
-            { id: 'sugarcane', name: 'Suikerriet', type: 'Gewas', icon: 'fa-candy-cane' },
-            { id: 'grapes', name: 'Druiven', type: 'Gewas', icon: 'fa-wine-bottle' },
-            { id: 'olives', name: 'Olijven', type: 'Gewas', icon: 'fa-oil-well' },
-            { id: 'poplar', name: 'Populieren', type: 'Gewas', icon: 'fa-tree' },
-            { id: 'grass', name: 'Gras', type: 'Gewas', icon: 'fa-leaf' },
-            { id: 'rice', name: 'Rijst', type: 'Gewas', icon: 'fa-bowl-rice' },
-            { id: 'long_rice', name: 'Langkorrelrijst', type: 'Gewas', icon: 'fa-bowl-rice' },
-            { id: 'spinach', name: 'Spinazie', type: 'Gewas', icon: 'fa-leaf' },
-            { id: 'peas', name: 'Erwten', type: 'Gewas', icon: 'fa-circle' },
-            { id: 'green_beans', name: 'Snijbonen', type: 'Gewas', icon: 'fa-leaf' },
-            { id: 'carrots', name: 'Wortels', type: 'Gewas', icon: 'fa-carrot' },
-            { id: 'parsnip', name: 'Pastinaak', type: 'Gewas', icon: 'fa-carrot' },
-            { id: 'redbeet', name: 'Rode Biet', type: 'Gewas', icon: 'fa-circle' },
-            { id: 'rye', name: 'Rogge (Rye)', type: 'Mod Gewas', icon: 'fa-wheat-awn' },
-            { id: 'spelt', name: 'Spelt', type: 'Mod Gewas', icon: 'fa-wheat-awn' },
-            { id: 'triticale', name: 'Triticale', type: 'Mod Gewas', icon: 'fa-wheat-awn' },
-            { id: 'alfalfa', name: 'Luzerne (Alfalfa)', type: 'Mod Gewas', icon: 'fa-leaf' },
-            { id: 'clover', name: 'Klaver (Clover)', type: 'Mod Gewas', icon: 'fa-clover' },
-            { id: 'buckwheat', name: 'Boekweit', type: 'Mod Gewas', icon: 'fa-seedling' },
-            { id: 'millet', name: 'Gierst (Millet)', type: 'Mod Gewas', icon: 'fa-bowl-rice' },
-            { id: 'mustard', name: 'Mosterd', type: 'Mod Gewas', icon: 'fa-seedling' },
-            { id: 'poppy', name: 'Maanzaad (Poppy)', type: 'Mod Gewas', icon: 'fa-seedling' },
-            { id: 'hemp', name: 'Hennep (Hemp)', type: 'Mod Gewas', icon: 'fa-cannabis' },
-            { id: 'tobacco', name: 'Tabak', type: 'Mod Gewas', icon: 'fa-sheet-plastic' },
-            { id: 'lavender', name: 'Lavendel', type: 'Mod Gewas', icon: 'fa-spa' },
-            { id: 'onion', name: 'Uien', type: 'Mod Gewas', icon: 'fa-database' },
-            { id: 'white_cabbage', name: 'Witte Kool', type: 'Mod Gewas', icon: 'fa-circle' },
-            { id: 'red_cabbage', name: 'Rode Kool', type: 'Mod Gewas', icon: 'fa-circle' },
-            { id: 'cauliflower', name: 'Bloemkool', type: 'Mod Gewas', icon: 'fa-circle' },
-            { id: 'hops', name: 'Hop', type: 'Mod Gewas', icon: 'fa-beer-mug-empty' },
-            { id: 'apple', name: 'Appels', type: 'Mod Gewas', icon: 'fa-apple-whole' },
-            { id: 'milk', name: 'Melk', type: 'Dierlijk', icon: 'fa-cow' },
+            // KLASSIEKE FS GRANEN
+            { id: 'wheat', name: 'Tarwe', type: 'Graan', icon: 'fa-wheat-awn' },
+            { id: 'barley', name: 'Gerst', type: 'Graan', icon: 'fa-wheat-awn' },
+            { id: 'oat', name: 'Haver', type: 'Graan', icon: 'fa-bowl-rice' },
+            { id: 'sorghum', name: 'Sorghum', type: 'Graan', icon: 'fa-wheat-awn' },
+            { id: 'canola', name: 'Koolzaad', type: 'Graan', icon: 'fa-seedling' },
+            { id: 'sunflower', name: 'Zonnebloemen', type: 'Graan', icon: 'fa-sun' },
+            { id: 'soybean', name: 'Sojabonen', type: 'Graan', icon: 'fa-disease' },
+            { id: 'maize', name: 'Mais', type: 'Graan', icon: 'fa-plant-wilt' },
+
+            // WORTEL- EN GROENTEGEWASSEN
+            { id: 'potato', name: 'Aardappelen', type: 'Wortel/Groente', icon: 'fa-database' },
+            { id: 'sugarbeet', name: 'Suikerbieten', type: 'Wortel/Groente', icon: 'fa-cubes' },
+            { id: 'carrots', name: 'Wortels', type: 'Wortel/Groente', icon: 'fa-carrot' },
+            { id: 'parsnips', name: 'Pastinaak', type: 'Wortel/Groente', icon: 'fa-carrot' },
+            { id: 'red_beet', name: 'Rode Biet', type: 'Wortel/Groente', icon: 'fa-circle' },
+            { id: 'cotton', name: 'Katoen', type: 'Wortel/Groente', icon: 'fa-scroll' },
+            { id: 'sugarcane', name: 'Suikerriet', type: 'Wortel/Groente', icon: 'fa-vial' },
+            { id: 'poplar', name: 'Populier (Hout)', type: 'Wortel/Groente', icon: 'fa-tree' },
+            { id: 'grass', name: 'Gras / Hooi', type: 'Wortel/Groente', icon: 'fa-spa' },
+            { id: 'grapes', name: 'Druiven', type: 'Wortel/Groente', icon: 'fa-wine-glass' },
+            { id: 'olives', name: 'Olijven', type: 'Wortel/Groente', icon: 'fa-vial' },
+
+            // DIERLIJKE PRODUCTEN
+            { id: 'milk', name: 'Koeienmelk', type: 'Dierlijk', icon: 'fa-cow' },
+            { id: 'goat_milk', name: 'Geitenmelk', type: 'Dierlijk', icon: 'fa-cow' },
+            { id: 'buffalo_milk', name: 'Buffelmelk', type: 'Dierlijk', icon: 'fa-cow' },
             { id: 'eggs', name: 'Eieren', type: 'Dierlijk', icon: 'fa-egg' },
             { id: 'wool', name: 'Schapenwol', type: 'Dierlijk', icon: 'fa-cloud' },
-            { id: 'honey', name: 'Honing', type: 'Dierlijk', icon: 'fa-jar' },
-            { id: 'bread', name: 'Brood', type: 'Product', icon: 'fa-bread-slice' },
-            { id: 'cheese', name: 'Kaas', type: 'Product', icon: 'fa-cheese' },
-            { id: 'butter', name: 'Boter', type: 'Product', icon: 'fa-box' },
-            { id: 'sugar', name: 'Suiker', type: 'Product', icon: 'fa-cubes' },
-            { id: 'flour', name: 'Bloem', type: 'Product', icon: 'fa-box-archive' },
-            { id: 'clothes', name: 'Kleding', type: 'Product', icon: 'fa-shirt' },
-            { id: 'boards', name: 'Planken', type: 'Hout', icon: 'fa-layer-group' },
-            { id: 'furniture', name: 'Meubels', type: 'Hout', icon: 'fa-chair' },
-            { id: 'beer', name: 'Bier (Beer Mod)', type: 'Product', icon: 'fa-beer-mug-empty' },
-            { id: 'wine', name: 'Wijn (Wine Mod)', type: 'Product', icon: 'fa-wine-glass' },
-            { id: 'compost', name: 'Compost', type: 'Product', icon: 'fa-recycle' }
+            { id: 'manure', name: 'Vaste Mest', type: 'Dierlijk', icon: 'fa-poop' },
+            { id: 'slurry', name: 'Drijfmest', type: 'Dierlijk', icon: 'fa-droplet' },
+
+            // PRODUCTIELIJNEN
+            { id: 'flour', name: 'Meel', type: 'Productie', icon: 'fa-box' },
+            { id: 'bread', name: 'Brood', type: 'Productie', icon: 'fa-bread-slice' },
+            { id: 'cheese', name: 'Kaas', type: 'Productie', icon: 'fa-cheese' },
+            { id: 'butter', name: 'Boter', type: 'Productie', icon: 'fa-cube' },
+            { id: 'mozzarella', name: 'Buffelmozzarella', type: 'Productie', icon: 'fa-cheese' },
+            { id: 'canned_food', name: 'Groenteconserven (Blik)', type: 'Productie', icon: 'fa-jar' },
+            { id: 'tofu', name: 'Tofu / Sojaproducten', type: 'Productie', icon: 'fa-cubes' },
+            { id: 'sunflower_oil', name: 'Zonnebloemolie', type: 'Productie', icon: 'fa-bottle-droplet' },
+            { id: 'canola_oil', name: 'Koolzaadolie', type: 'Productie', icon: 'fa-bottle-droplet' },
+            { id: 'olive_oil', name: 'Olijfolie', type: 'Productie', icon: 'fa-bottle-droplet' },
+            { id: 'sugar', name: 'Suiker', type: 'Productie', icon: 'fa-cube' },
+            { id: 'fabric', name: 'Stof', type: 'Productie', icon: 'fa-scroll' },
+            { id: 'clothes', name: 'Kleding', type: 'Productie', icon: 'fa-shirt' },
+            { id: 'boards', name: 'Houten Planken', type: 'Productie', icon: 'fa-align-justify' },
+            { id: 'furniture', name: 'Meubels', type: 'Productie', icon: 'fa-chair' },
+
+            // MODS & CUSTOM MAP MATERIALEN
+            { id: 'gravel', name: 'Grind 8-16 (Mod)', type: 'Mod/DLC', icon: 'fa-hill-rockslide' },
+            { id: 'sand', name: 'Zand (Mod)', type: 'Mod/DLC', icon: 'fa-dumpster' },
+            { id: 'coal', name: 'Steenkool (Mod)', type: 'Mod/DLC', icon: 'fa-fire' },
+            { id: 'dirt', name: 'Onbewerkte Grond (Mod)', type: 'Mod/DLC', icon: 'fa-mound' },
+            { id: 'topsoil', name: 'Tuinaarde (Mod)', type: 'Mod/DLC', icon: 'fa-seedling' },
+            { id: 'compost', name: 'Compost (Mod)', type: 'Mod/DLC', icon: 'fa-recycle' },
+            { id: 'woodpellets', name: 'Houtpellets (Mod)', type: 'Mod/DLC', icon: 'fa-box-open' },
+            { id: 'rye', name: 'Rogge (Mod Gewas)', type: 'Mod/DLC', icon: 'fa-wheat-awn' },
+            { id: 'alfalfa', name: 'Luzerne (Mod Gewas)', type: 'Mod/DLC', icon: 'fa-leaf' },
+            { id: 'clover', name: 'Klaver (Mod Gewas)', type: 'Mod/DLC', icon: 'fa-clover' }
         ];
 
-        // --- 3. STATE MANAGEMENT ---
         let mapsData = JSON.parse(localStorage.getItem('fs25_maps')) || [];
         let activeMapId = null;
+        let selectedCategory = 'all';
 
-        // --- 4. AUTHENTICATIE LOGICA ---
+        // Firebase Auth Listener
         if (auth) {
             auth.onAuthStateChanged(user => {
                 currentUser = user;
@@ -261,29 +296,26 @@
                     document.getElementById('btn-login').classList.add('hidden');
                     document.getElementById('user-info').classList.remove('hidden');
                     document.getElementById('user-name').innerText = user.displayName || 'Speler';
+                    document.getElementById('user-avatar').src = user.photoURL || 'https://via.placeholder.com/30';
+                    document.getElementById('login-warning').classList.add('hidden');
                     loadUserMapsFromCloud();
                 } else {
                     document.getElementById('btn-login').classList.remove('hidden');
                     document.getElementById('user-info').classList.add('hidden');
+                    document.getElementById('login-warning').classList.remove('hidden');
                 }
             });
         }
 
         function loginWithGoogle() {
-            if (!auth) return alert("Firebase is niet correct geïnitialiseerd.");
-            const provider = new firebase.auth.GoogleAuthProvider();
-            auth.signInWithPopup(provider).catch(error => {
-                alert("Inloggen mislukt: " + error.message);
-            });
+            if (!auth) return alert("Firebase is niet geconfigureerd.");
+            auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(err => alert("Inloggen mislukt: " + err.message));
         }
 
-        function logout() {
-            if (auth) auth.signOut();
-        }
+        function logout() { if (auth) auth.signOut(); }
 
-        // --- 5. MAP & DATA BEHEER ---
         function showHomeScreen() {
-            saveCurrentStateToMemory();
+            autoSave();
             activeMapId = null;
             document.getElementById('screen-home').classList.remove('hidden');
             document.getElementById('screen-dashboard').classList.add('hidden');
@@ -296,41 +328,95 @@
 
             if (mapsData.length === 0) {
                 grid.innerHTML = `
-                    <div class="col-span-full text-center py-12 bg-slate-800/50 rounded-lg border border-dashed border-slate-700">
+                    <div class="col-span-full text-center py-12 bg-slate-800/40 rounded-lg border border-dashed border-slate-700">
                         <i class="fa-solid fa-map-location-dot text-4xl text-slate-600 mb-3"></i>
-                        <p class="text-slate-400">Nog geen mappen aangemaakt. Klik op 'Nieuwe Map' om te beginnen!</p>
-                    </div>
-                `;
+                        <p class="text-slate-400">Nog geen savegames. Maak een nieuwe map aan om te beginnen!</p>
+                    </div>`;
                 return;
             }
 
             mapsData.forEach(map => {
-                const activeProductCount = Object.keys(map.products || {}).length;
+                const products = map.products || {};
+                const productIds = Object.keys(products);
+                const count = productIds.length;
+
+                let totalPercentage = 0;
+                let targetsWithGoals = 0;
+                let completedGoals = 0;
+
+                productIds.forEach(id => {
+                    const prod = products[id];
+                    const sold = parseInt(prod.sold) || 0;
+                    const target = parseInt(prod.target) || 0;
+
+                    if (target > 0) {
+                        targetsWithGoals++;
+                        const pct = Math.min(100, (sold / target) * 100);
+                        totalPercentage += pct;
+                        if (sold >= target) completedGoals++;
+                    }
+                });
+
+                const avgProgress = targetsWithGoals > 0 ? Math.round(totalPercentage / targetsWithGoals) : 0;
+
                 const card = document.createElement('div');
-                card.className = "fs-card p-5 rounded-lg cursor-pointer hover:bg-slate-800 transition flex justify-between items-center";
+                card.className = "fs-card p-5 rounded-lg cursor-pointer hover:bg-slate-800/80 transition flex flex-col justify-between gap-4 shadow-lg relative group";
                 card.onclick = () => openDashboard(map.id);
+
                 card.innerHTML = `
-                    <div class="flex items-center gap-4">
-                        <div class="p-3 bg-slate-900 text-green-500 rounded-lg text-2xl">
-                            <i class="fa-solid fa-map"></i>
+                    <div class="flex justify-between items-start">
+                        <div class="flex items-center gap-3">
+                            <div class="p-3 bg-slate-900 text-green-500 rounded-lg text-2xl">
+                                <i class="fa-solid fa-map"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold text-white">${map.name}</h3>
+                                <p class="text-xs text-slate-400">${count} doelen actief ${targetsWithGoals > 0 ? `(${completedGoals}/${targetsWithGoals} voltooid)` : ''}</p>
+                            </div>
                         </div>
-                        <div>
-                            <h3 class="text-lg font-bold text-white">${map.name}</h3>
-                            <p class="text-xs text-slate-400">Actieve doelen: ${activeProductCount} stuks</p>
+                        <button onclick="event.stopPropagation(); deleteMap('${map.id}')" class="text-slate-500 hover:text-red-400 p-1.5 rounded transition">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+
+                    <div class="space-y-2 pt-2 border-t border-slate-700/50">
+                        <div class="flex justify-between items-center text-xs">
+                            <span class="text-slate-400">Totale Doelvoortgang</span>
+                            <span class="font-bold ${avgProgress === 100 ? 'text-green-400' : 'text-slate-200'}">${avgProgress}%</span>
+                        </div>
+                        <div class="w-full bg-slate-900 rounded-full h-2 overflow-hidden border border-slate-700/50">
+                            <div class="bg-green-500 h-full transition-all duration-300" style="width: ${avgProgress}%"></div>
                         </div>
                     </div>
-                    <button onclick="event.stopPropagation(); deleteMap('${map.id}')" class="text-slate-500 hover:text-red-400 p-2">
-                        <i class="fa-solid fa-trash"></i>
-                    </button>
+
+                    ${map.hasTrees !== false ? `
+                    <div class="flex justify-between items-center bg-slate-900/60 p-2 rounded border border-slate-700/50 text-xs mt-1" onclick="event.stopPropagation()">
+                        <span class="text-slate-300 font-medium flex items-center gap-1.5">
+                            <i class="fa-solid fa-tree text-green-500"></i> Bomen
+                        </span>
+                        <div class="flex items-center gap-1">
+                            <button onclick="quickUpdateTrees('${map.id}', -1)" class="bg-slate-700 hover:bg-slate-600 text-white w-5 h-5 rounded font-bold text-[10px] flex items-center justify-center">-</button>
+                            <span class="font-bold text-green-400 px-1 text-xs min-w-[24px] text-center">${map.trees || 0}</span>
+                            <button onclick="quickUpdateTrees('${map.id}', 1)" class="bg-slate-700 hover:bg-slate-600 text-white w-5 h-5 rounded font-bold text-[10px] flex items-center justify-center">+</button>
+                        </div>
+                    </div>` : ''}
                 `;
                 grid.appendChild(card);
             });
         }
 
+        function quickUpdateTrees(mapId, amount) {
+            const map = mapsData.find(m => m.id === mapId);
+            if (!map) return;
+
+            map.trees = Math.max(0, (map.trees || 0) + amount);
+            autoSave();
+            renderMapsGrid();
+        }
+
         function openNewMapModal() {
             const container = document.getElementById('checkbox-container');
             container.innerHTML = '';
-
             FS25_PRODUCTS.forEach(p => {
                 const item = document.createElement('label');
                 item.className = "flex items-center justify-between p-2.5 bg-slate-900/80 rounded border border-slate-700/60 cursor-pointer hover:border-slate-500";
@@ -338,13 +424,10 @@
                     <div class="flex items-center gap-2 text-xs text-slate-200">
                         <i class="fa-solid ${p.icon} text-green-500 w-4 text-center"></i>
                         <span>${p.name}</span>
-                        <span class="text-[10px] text-slate-500">(${p.type})</span>
                     </div>
-                    <input type="checkbox" value="${p.id}" class="chk-prod w-4 h-4 accent-green-500 cursor-pointer" checked>
-                `;
+                    <input type="checkbox" value="${p.id}" class="chk-prod w-4 h-4 accent-green-500 cursor-pointer" checked>`;
                 container.appendChild(item);
             });
-
             document.getElementById('modal-map').classList.remove('hidden');
         }
 
@@ -354,55 +437,45 @@
             checkboxes.forEach(c => c.checked = !allChecked);
         }
 
-        function closeModal(id) {
-            document.getElementById(id).classList.add('hidden');
-        }
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
 
         function createNewMap() {
-            const nameInput = document.getElementById('new-map-name');
-            const name = nameInput.value.trim();
-            if (!name) return alert("Vul een naam in voor de map.");
+            const name = document.getElementById('new-map-name').value.trim();
+            if (!name) return alert("Vul een naam in.");
 
             const selectedProducts = {};
-            const checkboxes = document.querySelectorAll('.chk-prod:checked');
-            
-            checkboxes.forEach(chk => {
+            document.querySelectorAll('.chk-prod:checked').forEach(chk => {
                 selectedProducts[chk.value] = { target: 0, sold: 0 };
             });
 
-            const newMap = {
+            mapsData.push({
                 id: 'map_' + Date.now(),
                 name: name,
                 hasTrees: document.getElementById('chk-trees').checked,
                 trees: 0,
                 products: selectedProducts
-            };
+            });
 
-            mapsData.push(newMap);
-            saveDataLocally();
-            if(currentUser && db) syncWithCloud(true);
-            nameInput.value = '';
+            autoSave();
+            document.getElementById('new-map-name').value = '';
             closeModal('modal-map');
             renderMapsGrid();
         }
 
         function deleteMap(id) {
-            if (confirm("Weet je zeker dat je deze map wilt verwijderen?")) {
+            if (confirm("Weet je zeker dat je deze savegame wilt verwijderen?")) {
                 mapsData = mapsData.filter(m => m.id !== id);
-                saveDataLocally();
-                if(currentUser && db) syncWithCloud(true);
+                autoSave();
                 renderMapsGrid();
             }
         }
 
-        // --- 6. DASHBOARD LOGICA ---
         function openDashboard(mapId) {
             activeMapId = mapId;
             const map = mapsData.find(m => m.id === mapId);
             if (!map) return;
 
             document.getElementById('active-map-name').innerText = map.name;
-            
             const treeCard = document.getElementById('tree-card');
             if (map.hasTrees !== false) {
                 treeCard.classList.remove('hidden');
@@ -418,11 +491,20 @@
         }
 
         function updateTrees(amount) {
+            const map = mapsData.find(m => m.id === activeMapId);
+            if (!map) return;
             const input = document.getElementById('tree-count');
-            let current = parseInt(input.value) || 0;
-            current = Math.max(0, current + amount);
+            let current = Math.max(0, (parseInt(input.value) || 0) + amount);
             input.value = current;
-            saveCurrentStateToMemory();
+            map.trees = current;
+            autoSave();
+        }
+
+        function setCategoryFilter(cat) {
+            selectedCategory = cat;
+            document.querySelectorAll('.cat-btn').forEach(btn => btn.classList.remove('active-tab', 'text-green-500'));
+            document.getElementById(`cat-${cat}`).classList.add('active-tab');
+            filterProducts();
         }
 
         function renderDashboard() {
@@ -432,164 +514,155 @@
             const grid = document.getElementById('products-grid');
             grid.innerHTML = '';
 
+            let grandTotalSold = 0;
             const selectedProductIds = Object.keys(map.products || {});
 
-            if (selectedProductIds.length === 0) {
-                grid.innerHTML = `
-                    <div class="col-span-full text-center py-8 bg-slate-800/40 rounded border border-slate-700/50 text-slate-400">
-                        Geen gewassen of producten gekozen voor deze challenge.
-                    </div>
-                `;
-                return;
-            }
-
             selectedProductIds.forEach(prodId => {
-                const prod = FS25_PRODUCTS.find(p => p.id === prodId) || { name: prodId, icon: 'fa-box', type: 'Product' };
+                const prod = FS25_PRODUCTS.find(p => p.id === prodId) || { name: prodId, icon: 'fa-box', type: 'Productie' };
                 const prodData = map.products[prodId] || { target: 0, sold: 0 };
                 const sold = Math.max(0, parseInt(prodData.sold) || 0);
                 const target = Math.max(0, parseInt(prodData.target) || 0);
                 
-                let percentage = 0;
-                if (target > 0) {
-                    percentage = Math.min(100, Math.round((sold / target) * 100));
-                }
+                grandTotalSold += sold;
+                let percentage = target > 0 ? Math.min(100, Math.round((sold / target) * 100)) : 0;
 
                 const card = document.createElement('div');
-                card.className = "bg-slate-800/80 border border-slate-700/60 rounded-lg p-4 space-y-3";
+                card.className = "prod-card bg-slate-800/80 border border-slate-700/60 rounded-lg p-4 space-y-3 shadow-md";
+                card.setAttribute('data-name', prod.name.toLowerCase());
+                card.setAttribute('data-type', prod.type);
+
                 card.innerHTML = `
                     <div class="flex justify-between items-center border-b border-slate-700/50 pb-2">
                         <div class="flex items-center gap-2.5">
                             <i class="fa-solid ${prod.icon} text-green-500 text-lg"></i>
                             <span class="font-bold text-white">${prod.name}</span>
                         </div>
-                        <span class="text-xs font-semibold px-2 py-0.5 rounded bg-slate-700 text-slate-300">${prod.type}</span>
+                        <span class="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-700 text-slate-300">${prod.type}</span>
                     </div>
-
                     <div>
                         <div class="flex justify-between text-xs mb-1">
                             <span class="text-slate-400">Voortgang</span>
-                            <span class="font-bold text-green-400">${percentage}%</span>
+                            <span id="perc-${prodId}" class="font-bold text-green-400">${percentage}%</span>
                         </div>
-                        <div class="w-full bg-slate-900 rounded-full h-3 overflow-hidden border border-slate-700/50">
-                            <div class="bg-green-500 h-full transition-all duration-300" style="width: ${percentage}%"></div>
+                        <div class="w-full bg-slate-900 rounded-full h-2.5 overflow-hidden border border-slate-700/50">
+                            <div id="bar-${prodId}" class="bg-green-500 h-full transition-all duration-300" style="width: ${percentage}%"></div>
                         </div>
                     </div>
-
                     <div class="grid grid-cols-2 gap-2 text-xs">
                         <div>
-                            <label class="block text-slate-400 mb-1">Totaal Verkocht (L)</label>
-                            <input type="number" value="${sold}" min="0" onchange="updateProductValue('${prodId}', 'sold', this.value)" class="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-white font-semibold">
+                            <label class="block text-slate-400 mb-1">Verkocht (L)</label>
+                            <input type="number" id="sold-${prodId}" value="${sold}" min="0" oninput="updateProductValue('${prodId}')" class="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-white font-semibold focus:outline-none focus:border-green-500">
                         </div>
                         <div>
-                            <label class="block text-slate-400 mb-1">Doel (Liters)</label>
-                            <input type="number" value="${target}" min="0" onchange="updateProductValue('${prodId}', 'target', this.value)" class="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-slate-300">
+                            <label class="block text-slate-400 mb-1">Doel (L)</label>
+                            <input type="number" id="target-${prodId}" value="${target}" min="0" oninput="updateProductValue('${prodId}')" class="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-slate-300 focus:outline-none focus:border-green-500">
                         </div>
                     </div>
-
-                    <div class="pt-2 border-t border-slate-700/40">
-                        <label class="block text-[11px] text-green-400 font-medium mb-1">+ Exact Aantal Verkocht Toevoegen:</label>
-                        <div class="flex gap-2">
-                            <input type="number" id="input-add-${prodId}" placeholder="bijv. 12500" min="0" onkeyup="handleKeyPress(event, '${prodId}')" class="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-xs text-white">
-                            <button onclick="addExactAmount('${prodId}')" class="fs-btn text-xs text-white px-3 py-1.5 rounded font-bold flex items-center gap-1 whitespace-nowrap">
-                                <i class="fa-solid fa-plus"></i> Verkoop
-                            </button>
-                        </div>
-                    </div>
-                `;
+                    <div class="pt-2 border-t border-slate-700/40 flex gap-2">
+                        <input type="number" id="input-add-${prodId}" placeholder="+ Aantal liters" min="0" onkeyup="if(event.key==='Enter') addExactAmount('${prodId}')" class="w-full bg-slate-900 border border-slate-700 rounded p-1.5 text-xs text-white focus:outline-none focus:border-green-500">
+                        <button onclick="addExactAmount('${prodId}')" class="fs-btn text-xs text-white px-3 py-1.5 rounded font-bold whitespace-nowrap">
+                            + Toevoegen
+                        </button>
+                    </div>`;
                 grid.appendChild(card);
             });
+
+            filterProducts();
+            recalculateTotalSold();
         }
 
-        function handleKeyPress(event, productId) {
-            if (event.key === 'Enter') {
-                addExactAmount(productId);
-            }
+        function filterProducts() {
+            const query = document.getElementById('search-product').value.toLowerCase();
+            document.querySelectorAll('.prod-card').forEach(card => {
+                const name = card.getAttribute('data-name');
+                const type = card.getAttribute('data-type');
+
+                const matchesSearch = name.includes(query);
+                const matchesCategory = selectedCategory === 'all' || type === selectedCategory;
+
+                if (matchesSearch && matchesCategory) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
         }
 
         function addExactAmount(productId) {
             const inputField = document.getElementById(`input-add-${productId}`);
-            if (!inputField) return;
-
             const amountToAdd = Math.max(0, parseInt(inputField.value) || 0);
             if (amountToAdd <= 0) return;
 
             const map = mapsData.find(m => m.id === activeMapId);
-            if (!map) return;
-
-            if (!map.products) map.products = {};
-            if (!map.products[productId]) map.products[productId] = { target: 0, sold: 0 };
-            
-            map.products[productId].sold = (parseInt(map.products[productId].sold) || 0) + amountToAdd;
-            
-            saveCurrentStateToMemory();
-            renderDashboard();
+            if (map && map.products[productId]) {
+                const soldInput = document.getElementById(`sold-${productId}`);
+                const currentSold = parseInt(soldInput.value) || 0;
+                soldInput.value = currentSold + amountToAdd;
+                inputField.value = '';
+                
+                updateProductValue(productId);
+            }
         }
 
-        function updateProductValue(productId, field, value) {
+        function updateProductValue(productId) {
+            const map = mapsData.find(m => m.id === activeMapId);
+            if (!map || !map.products[productId]) return;
+
+            const sold = Math.max(0, parseInt(document.getElementById(`sold-${productId}`).value) || 0);
+            const target = Math.max(0, parseInt(document.getElementById(`target-${productId}`).value) || 0);
+
+            map.products[productId].sold = sold;
+            map.products[productId].target = target;
+
+            let percentage = target > 0 ? Math.min(100, Math.round((sold / target) * 100)) : 0;
+            document.getElementById(`perc-${productId}`).innerText = percentage + '%';
+            document.getElementById(`bar-${productId}`).style.width = percentage + '%';
+
+            recalculateTotalSold();
+            autoSave();
+        }
+
+        function recalculateTotalSold() {
             const map = mapsData.find(m => m.id === activeMapId);
             if (!map) return;
-
-            if (!map.products) map.products = {};
-            if (!map.products[productId]) {
-                map.products[productId] = { target: 0, sold: 0 };
-            }
-
-            map.products[productId][field] = Math.max(0, parseInt(value) || 0);
-            saveCurrentStateToMemory();
-            renderDashboard();
+            let total = 0;
+            Object.values(map.products).forEach(p => {
+                total += (parseInt(p.sold) || 0);
+            });
+            document.getElementById('stat-total-sold').innerText = total.toLocaleString() + ' L';
         }
 
-        function saveCurrentStateToMemory() {
-            if (!activeMapId) return;
-            const map = mapsData.find(m => m.id === activeMapId);
-            if (map) {
-                if (map.hasTrees !== false) {
-                    const treeElem = document.getElementById('tree-count');
-                    if (treeElem) map.trees = Math.max(0, parseInt(treeElem.value) || 0);
-                }
-            }
-            saveDataLocally();
-        }
-
-        // --- 7. OPSLAG & SYNCHRONISATIE ---
-        function saveDataLocally() {
+        // AUTOMATISCH OPSLAAN (Lokaal + Cloud Firestore)
+        let saveTimeout = null;
+        function autoSave() {
             localStorage.setItem('fs25_maps', JSON.stringify(mapsData));
-        }
 
-        function syncWithCloud(silent = false) {
-            saveCurrentStateToMemory();
+            const statusElem = document.getElementById('save-status');
+            if (statusElem) {
+                statusElem.classList.remove('hidden');
+                clearTimeout(saveTimeout);
+                saveTimeout = setTimeout(() => statusElem.classList.add('hidden'), 2500);
+            }
 
             if (currentUser && db) {
                 db.collection('users').doc(currentUser.uid).set({
                     maps: mapsData,
                     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                }).then(() => {
-                    if (!silent) alert("Gegevens succesvol gesynchroniseerd met je Firebase Cloud!");
-                }).catch(err => {
-                    if (!silent) alert("Fout bij opslaan in Cloud: " + err.message);
-                });
-            } else {
-                if (!silent) alert("Gegevens lokaal opgeslagen! Log in met Google om te synchroniseren tussen je apparaten.");
+                }, { merge: true }).catch(err => console.error("Cloud opslag fout:", err));
             }
         }
 
         function loadUserMapsFromCloud() {
             if (!currentUser || !db) return;
-
             db.collection('users').doc(currentUser.uid).get().then(doc => {
                 if (doc.exists && doc.data().maps) {
                     mapsData = doc.data().maps;
-                    saveDataLocally();
-                    if (activeMapId) {
-                        renderDashboard();
-                    } else {
-                        renderMapsGrid();
-                    }
+                    localStorage.setItem('fs25_maps', JSON.stringify(mapsData));
+                    activeMapId ? renderDashboard() : renderMapsGrid();
                 }
-            }).catch(err => console.error("Fout bij ophalen Cloud data:", err));
+            }).catch(err => console.error("Fout bij ophalen uit cloud:", err));
         }
 
-        // Initialisatie bij opstarten
         renderMapsGrid();
     </script>
 </body>
