@@ -4,317 +4,220 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>FS25 Challenge Tracker</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#e9eddf;--panel:#f7f9f1;--ink:#1d2819;--mute:#5d6b55;--line:#c8d1b9;--green:#3d7a2a;--gold:#c28f1d;--red:#a8432f;--track:#d5dcc7}
-@media(prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#161c13;--panel:#1f271b;--ink:#e6ecd9;--mute:#9aa98f;--line:#34402e;--green:#7cc15f;--gold:#e0b043;--red:#e07a64;--track:#2c3627}}
+:root{--bg:#e9eee0;--panel:#fbfcf7;--ink:#1d2a1f;--mute:#5d6b5e;--line:#cdd6c0;--field:#2f6b3a;--gold:#d9a82b;--soil:#3b2a1c;--danger:#a63d2f}
 *{box-sizing:border-box}
-html{height:100%}
-body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font:16px/1.5 "Bricolage Grotesque",system-ui,sans-serif;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
-.wrap{max-width:1000px;margin:0 auto;padding:20px 16px 60px}
-header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:20px}
-h1{font-size:clamp(1.6rem,4vw,2.4rem);font-weight:800;margin:0;letter-spacing:-.02em}
-h2{font-size:1.2rem;margin:0 0 10px}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:16px}
-button,input,select{font:inherit;color:inherit}
-button{background:var(--green);color:#fff;border:0;border-radius:6px;padding:8px 14px;cursor:pointer;font-weight:600}
-@media(prefers-color-scheme:dark){:root:not([data-theme=light]) button{color:#10170d}}
-button.alt{background:transparent;color:var(--ink);border:1px solid var(--line)}
-button.del{background:transparent;color:var(--red);border:1px solid var(--line);padding:4px 10px}
-button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
-input,select{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px 10px;min-width:0}
-.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-.row>input,.row>select{flex:1 1 140px}
-.tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
-.tab{background:var(--panel);color:var(--ink);border:1px solid var(--line)}
-.tab[aria-current=true]{background:var(--ink);color:var(--bg)}
-.total{font-size:clamp(2.4rem,9vw,4.5rem);font-weight:800;line-height:1;letter-spacing:-.03em}
-.bar{height:14px;background:var(--track);border-radius:7px;overflow:hidden;margin:8px 0}
-.bar>i{display:block;height:100%;background:var(--green);transition:width .4s}
-.bar.done>i{background:var(--gold)}
-.crop{border-top:1px solid var(--line);padding:14px 0}
-.crop:first-of-type{border-top:0}
-.crop .head{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:baseline}
-.crop .name{font-weight:600;font-size:1.05rem}
-.mute{color:var(--mute);font-size:.9rem}
-.mod{border:1px solid var(--gold);color:var(--gold);border-radius:4px;padding:0 6px;font-size:.75rem;margin-left:6px}
-.status{font-size:.9rem;color:var(--mute)}
-.overflow{overflow-x:auto}
-ul.log{list-style:none;margin:8px 0 0;padding:0;font-size:.9rem}
-ul.log li{display:flex;justify-content:space-between;gap:8px;padding:2px 0}
-details summary{cursor:pointer;color:var(--mute)}
+body{margin:0;font:16px/1.5 Barlow,system-ui,sans-serif;background:var(--bg);color:var(--ink)}
+header{background:var(--soil);color:#f2ead8;padding:14px 20px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;border-bottom:6px solid var(--gold)}
+header h1{font:700 28px 'Barlow Condensed',sans-serif;margin:0;letter-spacing:.5px;flex:1}
+main{max-width:1000px;margin:0 auto;padding:20px;display:grid;grid-template-columns:240px 1fr;gap:20px}
+@media(max-width:760px){main{grid-template-columns:1fr}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:16px}
+h2{font:700 22px 'Barlow Condensed',sans-serif;margin:0 0 10px}
+h3{font:600 18px 'Barlow Condensed',sans-serif;margin:18px 0 8px}
+input,select,button{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:4px;background:#fff;color:var(--ink)}
+input,select{width:100%}
+button{cursor:pointer;background:var(--field);color:#fff;border-color:var(--field);font-weight:600}
+button.sec{background:#fff;color:var(--ink);border-color:var(--line)}
+button.del{background:#fff;color:var(--danger);border-color:var(--line);padding:4px 8px}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--gold);outline-offset:1px}
+.row{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.row>*{flex:1;min-width:110px}.row>button{flex:0 0 auto}
+.maplist button{display:block;width:100%;text-align:left;margin-bottom:6px;background:#fff;color:var(--ink);border-color:var(--line)}
+.maplist button.on{background:var(--field);color:#fff;border-color:var(--field)}
+.total{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+.total b{font:700 56px/1 'Barlow Condensed',sans-serif;color:var(--field)}
+.bar{height:14px;background:#dfe6d2;border-radius:7px;overflow:hidden;margin:6px 0}
+.bar i{display:block;height:100%;background:var(--field);transition:width .3s}
+.bar i.done{background:var(--gold)}
+.crop{border-top:1px solid var(--line);padding:12px 0}
+.crop .top{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
+.crop .name{font-weight:600}
+.tag{font-size:12px;background:var(--gold);color:var(--soil);border-radius:3px;padding:1px 6px;margin-left:6px;font-weight:600}
+.mute{color:var(--mute);font-size:14px}
+.log div{display:flex;justify-content:space-between;border-bottom:1px dashed var(--line);padding:4px 0;font-size:14px}
+#status{font-size:13px;opacity:.85}
+.hide{display:none}
 </style>
 </head>
 <body>
-<div class="wrap">
 <header>
   <h1>FS25 Challenge Tracker</h1>
-  <div class="row">
-    <span class="status" id="syncStatus">Lokaal opgeslagen</span>
-    <button id="loginBtn" class="alt">Inloggen met Google</button>
-  </div>
+  <span id="status">Offline modus (lokale opslag)</span>
+  <button id="btnLogin" class="sec">Inloggen met Google</button>
+  <button id="btnLogout" class="sec hide">Uitloggen</button>
 </header>
+<main>
+  <aside class="panel">
+    <h2>Maps</h2>
+    <div id="maps" class="maplist"></div>
+    <div class="row"><input id="newMap" placeholder="Naam van nieuwe map" aria-label="Naam nieuwe map"></div>
+    <div class="row"><button id="addMap">Map aanmaken</button></div>
+  </aside>
+  <section id="content" class="panel"></section>
+</main>
 
-<section class="panel">
-  <h2>Mappen</h2>
-  <div class="tabs" id="tabs"></div>
-  <div class="row">
-    <input id="newMap" placeholder="Naam van nieuwe map, bijv. Erlengrat" aria-label="Naam nieuwe map">
-    <button id="addMap">Map aanmaken</button>
-  </div>
-</section>
-
-<div id="mapView"></div>
-
-<section class="panel">
-  <h2>Instellingen en back-up</h2>
-  <details>
-    <summary>Firebase-koppeling instellen</summary>
-    <p class="mute">Maak in de Firebase Console een project, voeg een webapp toe, schakel bij Authentication de provider Google in en maak een Firestore-database. Plak hieronder de <code>firebaseConfig</code> van uw webapp (JSON of het JavaScript-object zoals Firebase het toont). Voeg uw hostingdomein toe onder Authentication, Instellingen, Geautoriseerde domeinen.</p>
-    <textarea id="fbConfig" rows="6" style="width:100%;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px;color:inherit;font:13px monospace" placeholder='{ apiKey: "...", authDomain: "...", projectId: "...", appId: "..." }' aria-label="Firebase-configuratie"></textarea>
-    <div class="row" style="margin-top:8px"><button id="saveFb" class="alt">Configuratie opslaan</button></div>
-    <p class="mute">Firestore-regels (tabblad Regels), zodat alleen u uw eigen gegevens ziet:</p>
-    <pre class="overflow mute" style="font-size:12px">rules_version = '2';
-service cloud.firestore {
-  match /databases/{db}/documents {
-    match /users/{uid} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
-    }
-  }
-}</pre>
-  </details>
-  <div class="row" style="margin-top:12px">
-    <button id="exportBtn" class="alt">Exporteer JSON</button>
-    <label class="alt" style="cursor:pointer"><button class="alt" onclick="this.nextElementSibling.click();return false">Importeer JSON</button><input type="file" id="importFile" accept=".json" hidden></label>
-  </div>
-</section>
-</div>
-
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script>
-// Standaard client-ID (optioneel hier invullen, anders via Instellingen):
-const DEFAULT_CLIENT_ID = "";
-
-// Basislijst FS25 (aanpasbaar). Mod-items voegt u per challenge zelf toe.
-const CATALOG = {
-  "Akkerbouw": ["Tarwe","Gerst","Haver","Koolzaad","Sorghum","Soja","Maïs","Zonnebloemen","Aardappelen","Suikerbieten","Katoen","Suikerriet","Erwten","Rijst","Langkorrelrijst"],
-  "Groente": ["Spinazie","Sperziebonen","Wortelen","Pastinaak","Rode bieten"],
-  "Plantage": ["Olijven","Druiven","Populier"],
-  "Voer en strooisel": ["Gras","Hooi","Kuilgras","Stro","Houtsnippers"],
-  "Dierlijk": ["Melk","Eieren","Wol","Honing"],
-  "Verwerkt": ["Meel","Brood","Suiker","Zonnebloemolie","Koolzaadolie","Boter","Kaas","Chips","Aardappelchips"]
+/* ===== 1. FIREBASE-CONFIGURATIE: vul hier je eigen gegevens in (Firebase Console > Projectinstellingen) ===== */
+const FIREBASE_CONFIG = {
+  apiKey: "VUL_IN", authDomain: "VUL_IN.firebaseapp.com", projectId: "VUL_IN",
+  storageBucket: "VUL_IN.appspot.com", messagingSenderId: "VUL_IN", appId: "VUL_IN"
 };
-const KEY = "fs25-challenges-v1", CID_KEY = "fs25-client-id";
-const nf = new Intl.NumberFormat("nl-NL");
-const uid = () => Math.random().toString(36).slice(2, 10);
-const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+/* ===== 2. Standaardgewassen FS25 (aanpasbaar; controleer tegen je eigen spel) ===== */
+const BASE_CROPS = ["Tarwe","Gerst","Haver","Koolzaad","Mais","Zonnebloemen","Sojabonen","Aardappelen","Suikerbieten","Suikerriet","Katoen","Rijst (langkorrelig)","Sorghum","Erwten","Groene bonen","Spinazie","Wortelen","Pastinaak","Rode bieten","Druiven","Olijven","Gras","Hooi","Kuilgras","Stro"];
+
+/* ===== 3. Staat ===== */
+const KEY = "fs25-challenge-v1";
+let state = JSON.parse(localStorage.getItem(KEY) || "null") || { maps: [], customCrops: [], active: null };
+let user = null, db = null, saveTimer = null;
 const $ = id => document.getElementById(id);
-
-let state = load() || { maps: [], active: null, updatedAt: 0 };
-
-function load(){ try { return JSON.parse(localStorage.getItem(KEY)); } catch(e){ return null; } }
-function persist(){
-  state.updatedAt = Date.now();
-  try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e){}
-  scheduleSync();
-}
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const uid = () => Math.random().toString(36).slice(2, 10);
+const fmt = n => Math.round(n).toLocaleString("nl-NL");
 const activeMap = () => state.maps.find(m => m.id === state.active);
+const soldOf = (m, c) => m.sales.filter(s => s.crop === c.id).reduce((a, s) => a + s.l, 0);
 
-/* ---------- Weergave ---------- */
-function render(){
-  $("tabs").innerHTML = state.maps.length ? state.maps.map(m =>
-    `<button class="tab" data-map="${m.id}" aria-current="${m.id===state.active}">${esc(m.name)}</button>`).join("")
-    : `<span class="mute">Nog geen mappen. Maak hieronder uw eerste challenge-map aan.</span>`;
-  renderMap();
+function save() {
+  localStorage.setItem(KEY, JSON.stringify(state));
+  if (user && db) {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => db.collection("users").doc(user.uid).set(state)
+      .catch(e => setStatus("Opslaan mislukt: " + e.message)), 400);
+  }
+}
+function setStatus(t) { $("status").textContent = t; }
+
+/* ===== 4. Firebase login ===== */
+const configured = !FIREBASE_CONFIG.apiKey.startsWith("VUL_IN");
+if (configured) {
+  firebase.initializeApp(FIREBASE_CONFIG);
+  db = firebase.firestore();
+  firebase.auth().onAuthStateChanged(async u => {
+    user = u;
+    $("btnLogin").classList.toggle("hide", !!u);
+    $("btnLogout").classList.toggle("hide", !u);
+    if (u) {
+      setStatus("Ingelogd als " + (u.displayName || u.email) + " (gesynchroniseerd)");
+      try {
+        const snap = await db.collection("users").doc(u.uid).get();
+        if (snap.exists) state = snap.data(); else save();
+        localStorage.setItem(KEY, JSON.stringify(state));
+      } catch (e) { setStatus("Laden mislukt: " + e.message); }
+    } else setStatus("Offline modus (lokale opslag)");
+    render();
+  });
+}
+$("btnLogin").onclick = () => {
+  if (!configured) return alert("Vul eerst je Firebase-configuratie in bovenaan het script (FIREBASE_CONFIG).");
+  firebase.auth().signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e => alert("Inloggen mislukt: " + e.message));
+};
+$("btnLogout").onclick = () => firebase.auth().signOut();
+
+/* ===== 5. Acties ===== */
+$("addMap").onclick = () => {
+  const name = $("newMap").value.trim();
+  if (!name) return;
+  const m = { id: uid(), name, crops: [], sales: [] };
+  state.maps.push(m); state.active = m.id; $("newMap").value = ""; save(); render();
+};
+function addCrop() {
+  const m = activeMap(), sel = $("cropSel").value, custom = $("cropCustom").value.trim();
+  const goal = parseFloat($("cropGoal").value);
+  const name = custom || sel;
+  if (!name || !(goal > 0)) return alert("Kies of typ een gewas en geef een doel in liters (groter dan 0).");
+  if (m.crops.some(c => c.name.toLowerCase() === name.toLowerCase())) return alert("Dit gewas staat al in deze map.");
+  const isMod = !!custom && !BASE_CROPS.includes(custom);
+  if (isMod && !state.customCrops.includes(custom)) state.customCrops.push(custom);
+  m.crops.push({ id: uid(), name, goal, mod: isMod || state.customCrops.includes(name) });
+  save(); render();
+}
+function addSale(cropId) {
+  const m = activeMap(), v = parseFloat($("sale-" + cropId).value);
+  if (!(v > 0)) return;
+  m.sales.push({ id: uid(), crop: cropId, l: v, t: Date.now() });
+  save(); render();
+}
+function delSale(id) { const m = activeMap(); m.sales = m.sales.filter(s => s.id !== id); save(); render(); }
+function editGoal(cropId) {
+  const c = activeMap().crops.find(c => c.id === cropId);
+  const v = parseFloat(prompt("Nieuw doel in liters voor " + c.name + ":", c.goal));
+  if (v > 0) { c.goal = v; save(); render(); }
+}
+function delCrop(cropId) {
+  if (!confirm("Gewas en bijbehorende verkopen verwijderen?")) return;
+  const m = activeMap();
+  m.crops = m.crops.filter(c => c.id !== cropId); m.sales = m.sales.filter(s => s.crop !== cropId);
+  save(); render();
+}
+function delMap() {
+  const m = activeMap();
+  if (!confirm("Map '" + m.name + "' volledig verwijderen?")) return;
+  state.maps = state.maps.filter(x => x.id !== m.id); state.active = state.maps[0]?.id || null; save(); render();
 }
 
-function renderMap(){
-  const m = activeMap(), v = $("mapView");
-  if(!m){ v.innerHTML = ""; return; }
-  const target = m.crops.reduce((a,c)=>a+c.target,0);
-  const sold = m.crops.reduce((a,c)=>a+Math.min(c.sold,c.target),0);
-  const pct = target ? Math.round(sold/target*100) : 0;
+/* ===== 6. Weergave ===== */
+function render() {
+  $("maps").innerHTML = state.maps.map(m =>
+    `<button class="${m.id === state.active ? "on" : ""}" data-map="${m.id}">${esc(m.name)}</button>`).join("")
+    || '<p class="mute">Nog geen maps.</p>';
+  document.querySelectorAll("[data-map]").forEach(b => b.onclick = () => { state.active = b.dataset.map; save(); render(); });
 
-  const options = Object.entries(CATALOG).map(([g,items]) =>
-    `<optgroup label="${esc(g)}">${items.map(i=>`<option>${esc(i)}</option>`).join("")}</optgroup>`).join("");
+  const m = activeMap(), box = $("content");
+  if (!m) { box.innerHTML = "<h2>Welkom</h2><p>Maak links een map aan om je challenge te starten.</p>"; return; }
 
-  v.innerHTML = `
-  <section class="panel">
-    <div class="row" style="justify-content:space-between">
-      <h2>${esc(m.name)}</h2>
-      <button class="del" data-delmap="${m.id}">Map verwijderen</button>
+  let goalSum = 0, soldSum = 0;
+  m.crops.forEach(c => { goalSum += c.goal; soldSum += Math.min(soldOf(m, c), c.goal); });
+  const pct = goalSum ? soldSum / goalSum * 100 : 0;
+
+  const options = [...BASE_CROPS, ...state.customCrops.filter(x => !BASE_CROPS.includes(x))]
+    .map(n => `<option>${esc(n)}</option>`).join("");
+
+  box.innerHTML = `
+    <div class="row" style="justify-content:space-between;align-items:center">
+      <h2 style="margin:0">${esc(m.name)}</h2><button class="del" id="dm">Map verwijderen</button>
     </div>
-    <div class="total">${pct}%</div>
-    <div class="bar ${pct>=100?"done":""}" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"><i style="width:${Math.min(pct,100)}%"></i></div>
-    <div class="mute">${nf.format(sold)} van ${nf.format(target)} liter verkocht (gewogen over alle gewassen, per gewas begrensd op het doel)</div>
-  </section>
+    <div class="total"><b>${pct.toFixed(1)}%</b><span class="mute">totaal voltooid · ${fmt(soldSum)} van ${fmt(goalSum)} liter</span></div>
+    <div class="bar"><i class="${pct >= 100 ? "done" : ""}" style="width:${Math.min(pct, 100)}%"></i></div>
 
-  <section class="panel">
-    <h2>Gewas of product toevoegen</h2>
+    <h3>Gewas toevoegen aan challenge</h3>
     <div class="row">
-      <select id="catSel" aria-label="Kies uit lijst"><option value="">Kies uit de standaardlijst…</option>${options}</select>
-      <input id="catTarget" type="number" min="1" placeholder="Doel in liter" aria-label="Doel in liter">
-      <button id="addCat">Toevoegen</button>
+      <select id="cropSel" aria-label="Gewas">${options}</select>
+      <input id="cropCustom" placeholder="Of: eigen/mod-gewas of product" aria-label="Eigen gewas">
+      <input id="cropGoal" type="number" min="1" placeholder="Doel (liter)" aria-label="Doel in liter">
+      <button id="ac">Toevoegen</button>
     </div>
-    <div class="row" style="margin-top:8px">
-      <input id="modName" placeholder="Mod-gewas of mod-product, bijv. Hennep" aria-label="Naam mod-item">
-      <input id="modTarget" type="number" min="1" placeholder="Doel in liter" aria-label="Doel mod-item">
-      <button id="addMod" class="alt">Mod-item toevoegen</button>
-    </div>
-  </section>
+    <p class="mute">Mod-gewassen en producten typ je in het tekstveld; ze worden bewaard en verschijnen daarna in de lijst.</p>
 
-  <section class="panel">
-    <h2>Voortgang per gewas</h2>
-    ${m.crops.length ? m.crops.map(c => cropHtml(c)).join("") : `<p class="mute">Nog geen gewassen in deze map. Voeg er hierboven een toe.</p>`}
-  </section>`;
+    <h3>Voortgang per gewas</h3>
+    ${m.crops.map(c => {
+      const s = soldOf(m, c), p = Math.min(s / c.goal * 100, 100);
+      const log = m.sales.filter(x => x.crop === c.id).slice(-5).reverse();
+      return `<div class="crop">
+        <div class="top"><span class="name">${esc(c.name)}${c.mod ? '<span class="tag">mod</span>' : ""}</span>
+          <span>${fmt(s)} / ${fmt(c.goal)} L · <b>${p.toFixed(1)}%</b></span></div>
+        <div class="bar"><i class="${p >= 100 ? "done" : ""}" style="width:${p}%"></i></div>
+        <div class="row">
+          <input id="sale-${c.id}" type="number" min="1" placeholder="Verkocht (liter)" aria-label="Verkocht liter ${esc(c.name)}">
+          <button data-sale="${c.id}">Verkoop registreren</button>
+          <button class="sec" data-goal="${c.id}">Doel wijzigen</button>
+          <button class="del" data-delcrop="${c.id}">Verwijderen</button>
+        </div>
+        <div class="log">${log.map(x => `<div><span>${new Date(x.t).toLocaleDateString("nl-NL")} · ${fmt(x.l)} L</span><button class="del" data-delsale="${x.id}">Ongedaan</button></div>`).join("")}</div>
+      </div>`;
+    }).join("") || '<p class="mute">Voeg hierboven je eerste gewas toe.</p>'}`;
+
+  $("dm").onclick = delMap; $("ac").onclick = addCrop;
+  box.querySelectorAll("[data-sale]").forEach(b => b.onclick = () => addSale(b.dataset.sale));
+  box.querySelectorAll("[data-goal]").forEach(b => b.onclick = () => editGoal(b.dataset.goal));
+  box.querySelectorAll("[data-delcrop]").forEach(b => b.onclick = () => delCrop(b.dataset.delcrop));
+  box.querySelectorAll("[data-delsale]").forEach(b => b.onclick = () => delSale(b.dataset.delsale));
 }
-
-function cropHtml(c){
-  const p = c.target ? c.sold/c.target*100 : 0;
-  const last = c.log.slice(-5).reverse();
-  return `<div class="crop">
-    <div class="head">
-      <span class="name">${esc(c.name)}${c.mod?'<span class="mod">mod</span>':""}</span>
-      <span><b>${Math.round(p)}%</b> <span class="mute">· ${nf.format(c.sold)} / ${nf.format(c.target)} L</span></span>
-    </div>
-    <div class="bar ${p>=100?"done":""}"><i style="width:${Math.min(p,100)}%"></i></div>
-    <div class="row">
-      <input type="number" placeholder="Verkocht aantal liter" data-sold-input="${c.id}" aria-label="Verkocht aantal liter ${esc(c.name)}">
-      <button data-sell="${c.id}">Verkoop registreren</button>
-      <button class="alt" data-edit="${c.id}">Doel wijzigen</button>
-      <button class="del" data-delcrop="${c.id}">Verwijderen</button>
-    </div>
-    ${last.length?`<details><summary>Laatste verkopen</summary><ul class="log">${last.map(l=>`<li><span>${new Date(l.t).toLocaleString("nl-NL")}</span><span>${l.v>0?"+":""}${nf.format(l.v)} L</span></li>`).join("")}</ul></details>`:""}
-    ${p>100?`<div class="mute">Doel gehaald, ${nf.format(c.sold-c.target)} L extra verkocht.</div>`:""}
-  </div>`;
-}
-
-/* ---------- Acties ---------- */
-document.addEventListener("click", e => {
-  const t = e.target, m = activeMap();
-  if(t.dataset.map){ state.active = t.dataset.map; persist(); render(); }
-  else if(t.id==="addMap"){
-    const n = $("newMap").value.trim(); if(!n) return;
-    const map = {id:uid(), name:n, crops:[]}; state.maps.push(map); state.active = map.id;
-    $("newMap").value=""; persist(); render();
-  }
-  else if(t.dataset.delmap){
-    if(!confirm("Deze map en alle voortgang verwijderen?")) return;
-    state.maps = state.maps.filter(x=>x.id!==t.dataset.delmap);
-    state.active = state.maps[0]?.id || null; persist(); render();
-  }
-  else if(t.id==="addCat"){ addCrop($("catSel").value, $("catTarget").value, false); }
-  else if(t.id==="addMod"){ addCrop($("modName").value.trim(), $("modTarget").value, true); }
-  else if(t.dataset.sell){
-    const inp = document.querySelector(`[data-sold-input="${t.dataset.sell}"]`);
-    const v = parseFloat(inp.value); if(!v) return;
-    const c = m.crops.find(x=>x.id===t.dataset.sell);
-    c.sold = Math.max(0, c.sold + v); c.log.push({t:Date.now(), v}); persist(); renderMap();
-  }
-  else if(t.dataset.edit){
-    const c = m.crops.find(x=>x.id===t.dataset.edit);
-    const n = parseFloat(prompt(`Nieuw doel voor ${c.name} (liter):`, c.target));
-    if(n>0){ c.target = n; persist(); renderMap(); }
-  }
-  else if(t.dataset.delcrop){
-    m.crops = m.crops.filter(x=>x.id!==t.dataset.delcrop); persist(); renderMap();
-  }
-});
-
-function addCrop(name, target, mod){
-  const m = activeMap(), tg = parseFloat(target);
-  if(!m || !name || !(tg>0)){ alert("Vul een naam en een doel in liters in."); return; }
-  if(m.crops.some(c=>c.name.toLowerCase()===name.toLowerCase())){ alert("Dit gewas staat al in deze map."); return; }
-  m.crops.push({id:uid(), name, target:tg, sold:0, mod, log:[]});
-  persist(); renderMap();
-}
-
-/* ---------- Export / import ---------- */
-$("exportBtn").onclick = () => {
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([JSON.stringify(state,null,2)],{type:"application/json"}));
-  a.download = "fs25-challenges.json"; a.click();
-};
-$("importFile").onchange = e => {
-  const f = e.target.files[0]; if(!f) return;
-  f.text().then(t => { try { const d = JSON.parse(t); if(!Array.isArray(d.maps)) throw 0; state = d; persist(); render(); }
-    catch(err){ alert("Ongeldig bestand."); } });
-};
-
-/* ---------- Firebase-koppeling (logica in de module hieronder) ---------- */
-const FB_KEY = "fs25-fb-config";
-const DEFAULT_FB_CONFIG = null; // optioneel: { apiKey:"...", authDomain:"...", projectId:"...", appId:"..." }
-const setStatus = s => $("syncStatus").textContent = s;
-function scheduleSync(){ if(window.cloudSchedule) window.cloudSchedule(); }
-$("loginBtn").onclick = () => window.cloudLogin ? window.cloudLogin() : setStatus("Firebase wordt geladen…");
-$("fbConfig").value = localStorage.getItem(FB_KEY) || "";
-$("saveFb").onclick = () => {
-  const raw = $("fbConfig").value, cfg = {};
-  try { Object.assign(cfg, JSON.parse(raw)); }
-  catch(e){ for(const m of raw.matchAll(/(\w+)\s*:\s*["']([^"']*)["']/g)) cfg[m[1]] = m[2]; }
-  if(!cfg.apiKey || !cfg.projectId){ setStatus("Configuratie onvolledig: apiKey en projectId zijn verplicht."); return; }
-  localStorage.setItem(FB_KEY, JSON.stringify(cfg)); location.reload();
-};
-
-if(!state.active && state.maps.length) state.active = state.maps[0].id;
 render();
-</script>
-<script type="module">
-import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import {getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import {getFirestore,doc,setDoc,onSnapshot} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-let auth, db, user, unsub, timer;
-function config(){ try { return JSON.parse(localStorage.getItem(FB_KEY)) || DEFAULT_FB_CONFIG; } catch(e){ return DEFAULT_FB_CONFIG; } }
-
-function init(){
-  const c = config();
-  if(!c || !c.apiKey) return false;
-  if(!auth){ const app = initializeApp(c); auth = getAuth(app); db = getFirestore(app); onAuthStateChanged(auth, onUser); }
-  return true;
-}
-
-async function push(){
-  if(!user) return;
-  try {
-    await setDoc(doc(db, "users", user.uid), {state: JSON.stringify(state), updatedAt: state.updatedAt || Date.now()});
-    setStatus("Gesynchroniseerd (" + (user.email||"Google") + ") " + new Date().toLocaleTimeString("nl-NL"));
-  } catch(err){ setStatus("Opslaan mislukt: " + err.code); }
-}
-
-function onUser(u){
-  user = u; if(unsub){ unsub(); unsub = null; }
-  $("loginBtn").textContent = u ? "Uitloggen" : "Inloggen met Google";
-  if(!u){ setStatus("Lokaal opgeslagen"); return; }
-  setStatus("Synchroniseren…");
-  let first = true;
-  unsub = onSnapshot(doc(db, "users", u.uid), snap => {
-    const d = snap.data();
-    if(d && (d.updatedAt||0) > (state.updatedAt||0)){
-      state = JSON.parse(d.state);
-      if(!state.maps.some(m=>m.id===state.active)) state.active = state.maps[0]?.id || null;
-      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e){}
-      render(); setStatus("Bijgewerkt vanaf cloud " + new Date().toLocaleTimeString("nl-NL"));
-    } else if(first && (!d || d.updatedAt < state.updatedAt)){ push(); }
-    first = false;
-  }, err => setStatus("Firestore-fout: " + err.code + " (controleer de regels)"));
-}
-
-window.cloudSchedule = () => {
-  if(!user) return;
-  clearTimeout(timer); setStatus("Wijzigingen worden opgeslagen…");
-  timer = setTimeout(push, 1200);
-};
-
-window.cloudLogin = async () => {
-  if(location.protocol === "file:"){ setStatus("Host dit bestand via https of localhost; inloggen werkt niet vanaf file://"); return; }
-  if(!init()){ setStatus("Plak eerst uw Firebase-configuratie (onderaan, Instellingen)."); return; }
-  try {
-    if(user){ await signOut(auth); return; }
-    await signInWithPopup(auth, new GoogleAuthProvider());
-  } catch(err){ setStatus("Inloggen mislukt: " + err.code); }
-};
-
-init(); // herstelt een eerdere sessie automatisch
 </script>
 </body>
 </html>
