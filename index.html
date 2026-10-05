@@ -69,12 +69,19 @@ details summary{cursor:pointer;color:var(--mute)}
 <section class="panel">
   <h2>Instellingen en back-up</h2>
   <details>
-    <summary>Google-login instellen</summary>
-    <p class="mute">Maak in Google Cloud Console een OAuth-client-ID (type: webtoepassing), zet bij "Geautoriseerde JavaScript-bronnen" het adres waar u dit bestand host, en schakel de Google Drive API in. Plak het client-ID hieronder. De voortgang wordt opgeslagen in een verborgen app-map in uw eigen Google Drive (scope: drive.appdata).</p>
-    <div class="row">
-      <input id="clientId" placeholder="xxxx.apps.googleusercontent.com" aria-label="Google client-ID">
-      <button id="saveClient" class="alt">Opslaan</button>
-    </div>
+    <summary>Firebase-koppeling instellen</summary>
+    <p class="mute">Maak in de Firebase Console een project, voeg een webapp toe, schakel bij Authentication de provider Google in en maak een Firestore-database. Plak hieronder de <code>firebaseConfig</code> van uw webapp (JSON of het JavaScript-object zoals Firebase het toont). Voeg uw hostingdomein toe onder Authentication, Instellingen, Geautoriseerde domeinen.</p>
+    <textarea id="fbConfig" rows="6" style="width:100%;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px;color:inherit;font:13px monospace" placeholder='{ apiKey: "...", authDomain: "...", projectId: "...", appId: "..." }' aria-label="Firebase-configuratie"></textarea>
+    <div class="row" style="margin-top:8px"><button id="saveFb" class="alt">Configuratie opslaan</button></div>
+    <p class="mute">Firestore-regels (tabblad Regels), zodat alleen u uw eigen gegevens ziet:</p>
+    <pre class="overflow mute" style="font-size:12px">rules_version = '2';
+service cloud.firestore {
+  match /databases/{db}/documents {
+    match /users/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+  }
+}</pre>
   </details>
   <div class="row" style="margin-top:12px">
     <button id="exportBtn" class="alt">Exporteer JSON</button>
@@ -233,84 +240,81 @@ $("importFile").onchange = e => {
     catch(err){ alert("Ongeldig bestand."); } });
 };
 
-/* ---------- Google-login en Drive-synchronisatie ---------- */
-const clientId = () => localStorage.getItem(CID_KEY) || DEFAULT_CLIENT_ID;
-$("clientId").value = localStorage.getItem(CID_KEY) || "";
-$("saveClient").onclick = () => { localStorage.setItem(CID_KEY, $("clientId").value.trim()); setStatus("Client-ID opgeslagen. Klik op Inloggen met Google."); };
-
-let token = null, tokenClient = null, fileId = null, syncTimer = null;
+/* ---------- Firebase-koppeling (logica in de module hieronder) ---------- */
+const FB_KEY = "fs25-fb-config";
+const DEFAULT_FB_CONFIG = null; // optioneel: { apiKey:"...", authDomain:"...", projectId:"...", appId:"..." }
 const setStatus = s => $("syncStatus").textContent = s;
-
-function loadGsi(){
-  return new Promise((res, rej) => {
-    if(window.google?.accounts?.oauth2) return res();
-    const s = document.createElement("script");
-    s.src = "https://accounts.google.com/gsi/client"; s.onload = res; s.onerror = () => rej(new Error("Google-script laden mislukt"));
-    document.head.appendChild(s);
-  });
-}
-
-$("loginBtn").onclick = async () => {
-  if(!clientId()){ setStatus("Stel eerst een client-ID in (onderaan, Instellingen)."); return; }
-  if(location.protocol === "file:"){ setStatus("Host dit bestand via https of localhost; Google-login werkt niet vanaf file://"); return; }
-  try {
-    await loadGsi();
-    tokenClient = google.accounts.oauth2.initTokenClient({
-      client_id: clientId(),
-      scope: "https://www.googleapis.com/auth/drive.appdata",
-      callback: async r => {
-        if(r.error){ setStatus("Inloggen mislukt: " + r.error); return; }
-        token = r.access_token; $("loginBtn").textContent = "Ingelogd (Drive)"; await pull();
-      }
-    });
-    tokenClient.requestAccessToken({prompt: ""});
-  } catch(err){ setStatus(err.message); }
+function scheduleSync(){ if(window.cloudSchedule) window.cloudSchedule(); }
+$("loginBtn").onclick = () => window.cloudLogin ? window.cloudLogin() : setStatus("Firebase wordt geladen…");
+$("fbConfig").value = localStorage.getItem(FB_KEY) || "";
+$("saveFb").onclick = () => {
+  const raw = $("fbConfig").value, cfg = {};
+  try { Object.assign(cfg, JSON.parse(raw)); }
+  catch(e){ for(const m of raw.matchAll(/(\w+)\s*:\s*["']([^"']*)["']/g)) cfg[m[1]] = m[2]; }
+  if(!cfg.apiKey || !cfg.projectId){ setStatus("Configuratie onvolledig: apiKey en projectId zijn verplicht."); return; }
+  localStorage.setItem(FB_KEY, JSON.stringify(cfg)); location.reload();
 };
-
-async function drive(url, opts = {}){
-  const r = await fetch(url, {...opts, headers:{Authorization:"Bearer "+token, ...(opts.headers||{})}});
-  if(r.status === 401){ token = null; $("loginBtn").textContent = "Opnieuw verbinden"; throw new Error("Sessie verlopen, log opnieuw in."); }
-  if(!r.ok) throw new Error("Drive-fout " + r.status);
-  return r;
-}
-
-async function pull(){
-  try {
-    setStatus("Synchroniseren…");
-    const q = encodeURIComponent("name='fs25-challenges.json'");
-    const list = await (await drive(`https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=${q}&fields=files(id)`)).json();
-    if(list.files.length){
-      fileId = list.files[0].id;
-      const remote = await (await drive(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`)).json();
-      if((remote.updatedAt||0) > (state.updatedAt||0)){ state = remote; try{localStorage.setItem(KEY, JSON.stringify(state));}catch(e){} render(); }
-    }
-    await push();
-  } catch(err){ setStatus(err.message); }
-}
-
-async function push(){
-  if(!token) return;
-  const body = JSON.stringify(state);
-  if(fileId){
-    await drive(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {method:"PATCH", headers:{"Content-Type":"application/json"}, body});
-  } else {
-    const b = "x"+uid(), meta = JSON.stringify({name:"fs25-challenges.json", parents:["appDataFolder"]});
-    const multi = `--${b}\r\nContent-Type: application/json\r\n\r\n${meta}\r\n--${b}\r\nContent-Type: application/json\r\n\r\n${body}\r\n--${b}--`;
-    const r = await drive("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id", {method:"POST", headers:{"Content-Type":"multipart/related; boundary="+b}, body:multi});
-    fileId = (await r.json()).id;
-  }
-  setStatus("Gesynchroniseerd met Google Drive " + new Date().toLocaleTimeString("nl-NL"));
-}
-
-function scheduleSync(){
-  if(!token) return;
-  clearTimeout(syncTimer);
-  setStatus("Wijzigingen worden opgeslagen…");
-  syncTimer = setTimeout(() => push().catch(e => setStatus(e.message)), 1200);
-}
 
 if(!state.active && state.maps.length) state.active = state.maps[0].id;
 render();
+</script>
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {getFirestore,doc,setDoc,onSnapshot} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+let auth, db, user, unsub, timer;
+function config(){ try { return JSON.parse(localStorage.getItem(FB_KEY)) || DEFAULT_FB_CONFIG; } catch(e){ return DEFAULT_FB_CONFIG; } }
+
+function init(){
+  const c = config();
+  if(!c || !c.apiKey) return false;
+  if(!auth){ const app = initializeApp(c); auth = getAuth(app); db = getFirestore(app); onAuthStateChanged(auth, onUser); }
+  return true;
+}
+
+async function push(){
+  if(!user) return;
+  try {
+    await setDoc(doc(db, "users", user.uid), {state: JSON.stringify(state), updatedAt: state.updatedAt || Date.now()});
+    setStatus("Gesynchroniseerd (" + (user.email||"Google") + ") " + new Date().toLocaleTimeString("nl-NL"));
+  } catch(err){ setStatus("Opslaan mislukt: " + err.code); }
+}
+
+function onUser(u){
+  user = u; if(unsub){ unsub(); unsub = null; }
+  $("loginBtn").textContent = u ? "Uitloggen" : "Inloggen met Google";
+  if(!u){ setStatus("Lokaal opgeslagen"); return; }
+  setStatus("Synchroniseren…");
+  let first = true;
+  unsub = onSnapshot(doc(db, "users", u.uid), snap => {
+    const d = snap.data();
+    if(d && (d.updatedAt||0) > (state.updatedAt||0)){
+      state = JSON.parse(d.state);
+      if(!state.maps.some(m=>m.id===state.active)) state.active = state.maps[0]?.id || null;
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e){}
+      render(); setStatus("Bijgewerkt vanaf cloud " + new Date().toLocaleTimeString("nl-NL"));
+    } else if(first && (!d || d.updatedAt < state.updatedAt)){ push(); }
+    first = false;
+  }, err => setStatus("Firestore-fout: " + err.code + " (controleer de regels)"));
+}
+
+window.cloudSchedule = () => {
+  if(!user) return;
+  clearTimeout(timer); setStatus("Wijzigingen worden opgeslagen…");
+  timer = setTimeout(push, 1200);
+};
+
+window.cloudLogin = async () => {
+  if(location.protocol === "file:"){ setStatus("Host dit bestand via https of localhost; inloggen werkt niet vanaf file://"); return; }
+  if(!init()){ setStatus("Plak eerst uw Firebase-configuratie (onderaan, Instellingen)."); return; }
+  try {
+    if(user){ await signOut(auth); return; }
+    await signInWithPopup(auth, new GoogleAuthProvider());
+  } catch(err){ setStatus("Inloggen mislukt: " + err.code); }
+};
+
+init(); // herstelt een eerdere sessie automatisch
 </script>
 </body>
 </html>
